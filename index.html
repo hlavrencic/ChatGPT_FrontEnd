@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Home</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <!--
+      Need a visual blank slate?
+      Remove all code in `styles.css`!
+    -->
+    <title>ChatGPT Prompt</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="script.js"></script>
+  </head>
+  <body>
+    <div id="chat-container">
+      <header>
+          <h1>ChatGPT</h1>
+      </header>
+      
+      <div id="chat-window">
+          <div id="chat-log"></div>
+          <!-- Loading spinner -->
+          <div id="loading-spinner" class="spinner" style="display: none;"></div>
+      </div>
+      
+      <form id="chat-form">
+          <input type="text" id="user-input" placeholder="Type your message here..." autocomplete="off">
+          <button type="submit">Send</button>
+      </form>
+    </div>
+  </body>
+</html>
