@@ -1,65 +1,93 @@
-document
-  .getElementById('chat-form')
-  .addEventListener('submit', async (event) => {
-    event.preventDefault();
+const chatDiv = document.getElementById("chat");
+const inputForm = document.getElementById("inputForm");
+const userInput = document.getElementById("userInput");
 
-    const userInput = document.getElementById('user-input').value.trim();
-    if (!userInput) return;
-
-    addMessage(userInput, 'user-message');
-    document.getElementById('user-input').value = '';
-
-    // Show the loading spinner
-    toggleLoadingSpinner(true);
-
-    try {
-      // Fetch ChatGPT response
-      const chatGptResponse = await getChatGptResponse(userInput);
-      addMessage(chatGptResponse, 'gpt-message');
-    } catch (error) {
-      console.error('Error fetching response:', error);
-      addMessage(
-        'Error: Unable to fetch response. Please try again later.',
-        'gpt-message'
-      );
-    } finally {
-      // Hide the loading spinner regardless of success or error
-      toggleLoadingSpinner(false);
+// Función para obtener la API Key de las cookies
+function getApiKeyFromCookies() {
+    const name = "apiKey=";
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const cookies = decodedCookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        let cookie = cookies[i].trim();
+        if (cookie.indexOf(name) === 0) {
+            return cookie.substring(name.length, cookie.length);
+        }
     }
-  });
-
-function addMessage(text, className) {
-  const messageElement = document.createElement('div');
-  messageElement.classList.add('message', className);
-  messageElement.textContent = text;
-
-  document.getElementById('chat-log').appendChild(messageElement);
-  messageElement.scrollIntoView({ behavior: 'smooth' });
+    return null;
 }
 
-function toggleLoadingSpinner(show) {
-  const spinner = document.getElementById('loading-spinner');
-  spinner.style.display = show ? 'block' : 'none';
+// Función para guardar la API Key en las cookies
+function setApiKeyInCookies(apiKey) {
+    const expirationDays = 30;
+    const date = new Date();
+    date.setTime(date.getTime() + (expirationDays * 24 * 60 * 60 * 1000));
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = "apiKey=" + apiKey + ";" + expires + ";path=/";
 }
 
-async function getChatGptResponse(userInput) {
-  try {
-    const response = await fetch('https://api.yourchatgpt.com/response', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt: userInput }),
+// Función para obtener o pedir la API Key
+async function getApiKey() {
+    let apiKey = getApiKeyFromCookies();
+    if (!apiKey) {
+        apiKey = prompt("Por favor, introduce tu clave de API de OpenAI:");
+        if (apiKey) {
+            setApiKeyInCookies(apiKey);
+        } else {
+            alert("Se necesita una clave de API para continuar.");
+        }
+    }
+    return apiKey;
+}
+
+// Función para enviar el mensaje a la API de OpenAI
+async function sendMessage(message) {
+    const apiUrl = "https://api.openai.com/v1/chat/completions";
+    const apiKey = await getApiKey();
+
+    if (!apiKey) return;
+
+    const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+    };
+
+    const body = JSON.stringify({
+        model: "gpt-4",
+        messages: [{ role: "user", content: message }]
     });
 
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
-    }
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: headers,
+            body: body
+        });
 
-    const data = await response.json();
-    return data.answer || 'Sorry, there was an issue with the response format.';
-  } catch (error) {
-    console.error('Fetch error:', error);
-    throw error;
-  }
+        const data = await response.json();
+        const reply = data.choices[0].message.content;
+
+        // Agrega el mensaje del usuario y la respuesta de ChatGPT al chat
+        addMessage("Usuario", message);
+        addMessage("ChatGPT", reply);
+
+    } catch (error) {
+        console.error("Error:", error);
+        addMessage("ChatGPT", "Hubo un problema al conectar con la API.");
+    }
 }
+
+// Función para agregar un mensaje al chat
+function addMessage(sender, message) {
+    const messageDiv = document.createElement("div");
+    messageDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+    chatDiv.appendChild(messageDiv);
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+// Evento de envío del formulario
+inputForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    const message = userInput.value;
+    sendMessage(message);
+    userInput.value = "";
+});
